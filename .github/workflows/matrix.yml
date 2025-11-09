@@ -1,0 +1,63 @@
+name: Matrix Build with Artifacts
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node: '16'
+            variant: ubuntu-node16
+          - os: ubuntu-22.04
+            node: '18'
+            variant: ubuntu-node18
+          - os: windows-latest
+            node: '18'
+            variant: windows-node18
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Matrix info (matrix-671a29d)
+        id: matrix-671a29d
+        run: |
+          echo "Running variant: ${{ matrix.variant }}"
+          echo "Runner OS: ${{ runner.os }}"
+
+      # Create artifact on Linux/macOS
+      - name: Create artifact (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          file=build-671a29d-${{ matrix.variant }}.txt
+          echo "variant=${{ matrix.variant }}" > $file
+          echo "os=${{ runner.os }}" >> $file
+          echo "node=${{ matrix.node }}" >> $file
+          echo "timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $file
+        shell: bash
+
+      # Create artifact on Windows
+      - name: Create artifact (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $file = "build-671a29d-${{ matrix.variant }}.txt"
+          "variant=${{ matrix.variant }}" | Out-File -FilePath $file -Encoding utf8
+          "os=${{ runner.os }}" | Out-File -FilePath $file -Append -Encoding utf8
+          "node=${{ matrix.node }}" | Out-File -FilePath $file -Append -Encoding utf8
+          "timestamp=$(Get-Date -Format o)" | Out-File -FilePath $file -Append -Encoding utf8
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: build-671a29d-${{ matrix.variant }}
+          path: build-671a29d-${{ matrix.variant }}.txt
+
